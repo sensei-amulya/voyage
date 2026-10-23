@@ -182,6 +182,15 @@ def parse_request_node(state: AgentState) -> Dict[str, Any]:
         home_city = home_city.strip()
 
     # 2. Entity merging across turns
+    # If the user previously had a destination (e.g. Rome) and was clarifying departure city or dates,
+    # and the user did NOT explicitly request a new destination/trip, any new city detected
+    # should be assigned to origin (departure), preserving the destination!
+    if old_dest and not is_explicit_new_destination:
+        if parsed.get("destination") and parsed["destination"].strip().lower() != old_dest.strip().lower():
+            if not parsed.get("origin"):
+                parsed["origin"] = parsed["destination"]
+            parsed["destination"] = old_dest
+
     dest = parsed.get("destination") or (old_dest if not is_explicit_new_destination else None)
     
     # Origin resolution priority:

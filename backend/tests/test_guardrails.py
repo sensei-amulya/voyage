@@ -335,3 +335,20 @@ def test_restaurant_search_in_kyoto_accepted():
     assert res.category == ScopeCategory.IN_SCOPE
 
 
+def test_date_clarification_accepted_during_active_travel_conversation():
+    """Ensure answers to date questions (e.g. '25th october') during multi-turn flow are accepted."""
+    active_clarification_context = {
+        "destination": "Rome",
+        "origin": "Bangalore",
+        "duration": 5,
+        "status": "needs_input",
+        "missing_fields": ["dates"],
+        "question": "What dates would you like to travel?"
+    }
+    res = classify_input_scope("25th october", context=active_clarification_context)
+    assert res.is_allowed is True
+    assert res.category == ScopeCategory.IN_SCOPE
+    assert res.action == "allow"
+
+
+

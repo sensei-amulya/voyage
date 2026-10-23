@@ -560,7 +560,7 @@ async def confirm_payment_endpoint(thread_id: str, request: ConfirmPaymentReques
             "id": "step-10",
             "label": "Payment completed",
             "status": "complete",
-            "completed_description": f"Booking reference: {confirmation['booking_reference']}"
+            "completed_description": f"Booking reference: {bref}"
         })
         state_dict["step_progress"] = steps
 

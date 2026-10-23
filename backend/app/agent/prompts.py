@@ -74,7 +74,8 @@ STOP_WORDS = {
     "where", "how", "best", "top", "good", "some", "all", "any", "things", "do", "see", "there",
     "increase", "decrease", "reduce", "change", "set", "make", "total", "entire", "overall",
     "travelling", "traveling", "leaving", "departing",
-    "it", "please", "can", "you", "want", "would", "like", "available", "stays", "stay"
+    "it", "please", "can", "you", "want", "would", "like", "available", "stays", "stay",
+    "dates", "date", "month", "months", "th", "st", "nd", "rd"
 }
 
 MONTH_MAP = {
@@ -97,7 +98,7 @@ def clean_location_name(text: str) -> str:
     if not text:
         return ""
     words = text.strip().split()
-    filtered = [w for w in words if w.lower() not in STOP_WORDS and not re.match(r'^[\d\?,₹$]+$', w)]
+    filtered = [w for w in words if w.lower() not in STOP_WORDS and not re.match(r'^[\d\?,₹$]+(?:st|nd|rd|th)?$', w, re.IGNORECASE)]
     if not filtered:
         return ""
     return " ".join(filtered).strip().title()
@@ -210,7 +211,18 @@ def parse_date_range(text: str) -> tuple:
     if single_date:
         m_str = single_date.group(1)
         d_num = int(single_date.group(2))
-        m = MONTH_MAP.get(m_str[:3], 9)
+        m = MONTH_MAP.get(m_str[:3], 10)
+        try:
+            dep_dt = datetime.date(year, m, d_num)
+            return dep_dt.strftime("%Y-%m-%d"), None, None
+        except Exception:
+            pass
+
+    # 6. Standalone ordinal date mention e.g. "dates 20th", "20th", "on 20th"
+    ord_date = re.search(r'\b(?:dates?|on|from)?\s*(\d{1,2})(?:st|nd|rd|th)\b', lower)
+    if ord_date:
+        d_num = int(ord_date.group(1))
+        m = 10  # October
         try:
             dep_dt = datetime.date(year, m, d_num)
             return dep_dt.strftime("%Y-%m-%d"), None, None

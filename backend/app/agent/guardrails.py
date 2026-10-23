@@ -146,7 +146,11 @@ TRAVEL_CORE_KEYWORDS = [
     "travel insurance", "insurance", "policy", "visa", "passport", "consulate", "customs",
     "boarding pass", "gate", "runway", "jet lag", "currency", "forex", "exchange rate",
     "goa", "mumbai", "delhi", "bangalore", "jaipur", "paris", "tokyo", "kyoto", "london", "dubai",
-    "rome", "bali", "singapore", "new york", "amalfi", "udaipur", "manali", "kashmir", "kerala", "budget", "per night"
+    "rome", "bali", "singapore", "new york", "amalfi", "udaipur", "manali", "kashmir", "kerala", "budget", "per night",
+    # Dates, months, and travel durations
+    "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
+    "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
+    "today", "tomorrow", "weekend", "week", "days", "day", "nights", "night", "dates", "date"
 ]
 
 TRAVEL_ADJACENT_PATTERNS = [
@@ -297,36 +301,69 @@ def classify_input_scope(
                 )
 
     # -------------------------------------------------------------
+    # -------------------------------------------------------------
     # Layer 4: Conversation Context Awareness for Multi-Turn Follow-ups
     # -------------------------------------------------------------
     has_active_context = False
     if context and isinstance(context, dict):
         has_active_context = bool(
             context.get("destination") or
+            context.get("origin") or
+            context.get("duration") or
+            context.get("duration_days") or
             context.get("itinerary") or
             context.get("selected_flight") or
             context.get("selected_hotel") or
             context.get("disruption_detected") or
             context.get("recovery_status") or
             context.get("budget") or
+            context.get("status") in ["needs_input", "clarification_needed", "awaiting_approval", "in_progress"] or
+            context.get("missing_fields") or
+            context.get("question") or
             (context.get("agent_events") and len(context.get("agent_events")) > 0)
         )
 
     if has_active_context:
-        for pattern in CONTEXTUAL_FOLLOW_UP_PATTERNS:
-            if re.search(pattern, clean_msg):
-                logger.info(f"[Guardrail] In-scope contextual follow-up: '{clean_msg[:60]}'")
-                return GuardrailResult(
-                    category=ScopeCategory.IN_SCOPE,
-                    is_allowed=True,
-                    confidence=0.96,
-                    reason="Legitimate conversational follow-up to ongoing travel task",
-                    action="allow"
-                )
+        # Since Layer 1 (Prompt Injections) and Layer 3 (Coding, Math, Recipes, Lifestyle)
+        # have already evaluated and rejected hostile or genuinely out-of-scope requests,
+        # any user response continuing this active travel planning conversation (dates, cities,
+        # durations, budgets, preferences, affirmative answers, choices, or follow-ups) is IN_SCOPE!
+        logger.info(f"[Guardrail] In-scope contextual follow-up/response: '{clean_msg[:60]}'")
+        return GuardrailResult(
+            category=ScopeCategory.IN_SCOPE,
+            is_allowed=True,
+            confidence=0.96,
+            reason="Legitimate conversational response or follow-up to ongoing travel task",
+            action="allow"
+        )
 
     # -------------------------------------------------------------
     # Layer 5: Ambiguous Queries (Require Clarification)
     # -------------------------------------------------------------
+    has_date_pattern = bool(
+        re.search(r'\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b', msg_lower) or
+        re.search(r'\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}(?:st|nd|rd|th)?\b', msg_lower) or
+        re.search(r'\b\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?\b', msg_lower) or
+        re.search(r'\b\d+\s*(?:day|days|night|nights|weekend)\b', msg_lower) or
+        re.search(r'\b(?:next|this)\s+(?:weekend|week|month|friday|saturday|sunday|monday)\b', msg_lower)
+    )
+
+    if has_date_pattern and not has_active_context and not has_explicit_travel_action:
+        has_city = any(city in msg_lower for city in [
+            "goa", "mumbai", "delhi", "bangalore", "jaipur", "paris", "tokyo", "kyoto",
+            "london", "dubai", "rome", "bali", "singapore", "new york", "amalfi", "udaipur", "manali", "kashmir", "kerala"
+        ])
+        if not has_city:
+            # Standalone date or duration mention without destination or travel context
+            return GuardrailResult(
+                category=ScopeCategory.AMBIGUOUS,
+                is_allowed=False,
+                confidence=0.85,
+                reason="Date or duration provided without destination or travel context",
+                action="clarify",
+                suggested_response=STANDARD_CLARIFICATION_RESPONSE
+            )
+
     # Only flag as ambiguous if not already qualified by strong travel keywords
     has_travel_kw = any(kw in msg_lower for kw in TRAVEL_CORE_KEYWORDS)
 
