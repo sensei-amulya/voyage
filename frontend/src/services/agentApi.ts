@@ -149,7 +149,7 @@ export interface BackendDisruptionRecovery {
 export interface BackendAgentResponse {
   thread_id: string;
   status: 'completed' | 'needs_input' | 'budget_warning' | 'awaiting_approval' | 'in_progress' | 'error';
-  intent: 'trip_planning' | 'flight_search' | 'hotel_search' | 'restaurant_search' | 'activity_search' | 'transport_search' | 'general_travel';
+  intent: 'trip_planning' | 'flight_search' | 'hotel_search' | 'restaurant_search' | 'activity_search' | 'transport_search' | 'general_travel' | 'out_of_scope' | 'ambiguous' | string;
   destination?: string | null;
   origin?: string | null;
   departure_date?: string | null;

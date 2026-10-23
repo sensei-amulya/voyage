@@ -189,7 +189,7 @@ export interface AgentRecommendationResult {
   id: string;
   thread_id?: string;
   planTitle: string;
-  intent?: 'trip_planning' | 'flight_search' | 'hotel_search' | 'restaurant_search' | 'activity_search' | 'transport_search' | 'general_travel';
+  intent?: 'trip_planning' | 'flight_search' | 'hotel_search' | 'restaurant_search' | 'activity_search' | 'transport_search' | 'general_travel' | 'out_of_scope' | 'ambiguous' | string;
   destination: string;
   origin?: string;
   departureDate?: string;
